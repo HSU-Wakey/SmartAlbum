@@ -1,4 +1,4 @@
-package com.example.smartalbum;
+package com.example.smartalbum.ui;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.util.Pair;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -15,18 +14,21 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.smartalbum.tflite.ImageClassifier;
+import com.example.smartalbum.R;
+import com.example.smartalbum.data.ImageRepository;
+import com.example.smartalbum.domain.model.ImageMeta;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
 public class GalleryActivity extends AppCompatActivity {
     private static final int PICK_IMAGE = 1;
+
     private ImageView imageView;
     private TextView resultText;
     private Button btnSelectImage;
-    private ImageClassifier imageClassifier;
+
+    private ImageRepository imageRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,13 +38,7 @@ public class GalleryActivity extends AppCompatActivity {
         imageView = findViewById(R.id.imageView);
         resultText = findViewById(R.id.resultText);
         btnSelectImage = findViewById(R.id.btnSelectImage);
-
-        try {
-            imageClassifier = new ImageClassifier(this);
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.e("GalleryActivity", "모델 로드 실패");
-        }
+        imageRepository = new ImageRepository(this);
 
         btnSelectImage.setOnClickListener(v -> openGallery());
     }
@@ -59,20 +55,23 @@ public class GalleryActivity extends AppCompatActivity {
         if (requestCode == PICK_IMAGE && resultCode == RESULT_OK && data != null) {
             Uri imageUri = data.getData();
             try {
-                InputStream imageStream = getContentResolver().openInputStream(imageUri);
-                Bitmap bitmap = BitmapFactory.decodeStream(imageStream);
+                InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                 imageView.setImageBitmap(bitmap);
 
-                // AI 모델 예측 실행
-                List<Pair<String, Float>> predictions = imageClassifier.classifyImage(bitmap);
-                StringBuilder resultBuilder = new StringBuilder("Top 5 Predictions:\n\n");
+                ImageMeta imageMeta = imageRepository.classifyImage(imageUri, bitmap);
 
-                for (Pair<String, Float> result : predictions) {
-                    resultBuilder.append(String.format("- %s: %.2f%%\n", result.first, result.second));
+                StringBuilder sb = new StringBuilder();
+                sb.append("📍지역: ").append(imageMeta.getRegion()).append("\n\n");
+                sb.append("Top 5 Predictions:\n\n");
+                List<Pair<String, Float>> predictions = imageMeta.getPredictions();
+                for (Pair<String, Float> prediction : predictions) {
+                    sb.append("- ").append(prediction.first).append(": ")
+                            .append(String.format("%.2f", prediction.second)).append("%\n");
                 }
 
-                resultText.setText(resultBuilder.toString());
-            } catch (IOException e) {
+                resultText.setText(sb.toString());
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -81,8 +80,6 @@ public class GalleryActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (imageClassifier != null) {
-            imageClassifier.close();
-        }
+        imageRepository.close();
     }
 }

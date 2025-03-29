@@ -37,7 +37,8 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-lite:2.17.0' // TensorFlow Lite
     implementation 'androidx.appcompat:appcompat:1.6.1' // 앱 호환성 지원
     implementation 'androidx.core:core:1.12.0'
-    implementation libs.litert.support.api// 코어 라이브러리
+    implementation libs.litert.support.api
+    implementation libs.exifinterface// 코어 라이브러리
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core

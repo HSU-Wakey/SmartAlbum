@@ -1,10 +1,12 @@
-package com.example.smartalbum;
+package com.example.smartalbum.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.smartalbum.R;
 
 public class MainActivity extends AppCompatActivity {
     private Button btnGallery;

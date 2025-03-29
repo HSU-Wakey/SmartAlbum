@@ -19,7 +19,7 @@
 
         <!-- 메인 액티비티 -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,7 +28,7 @@
         </activity>
 
         <!-- ✅ GalleryActivity 선언 추가 -->
-        <activity android:name=".GalleryActivity" />
+        <activity android:name=".ui.GalleryActivity" />
 
     </application>
 

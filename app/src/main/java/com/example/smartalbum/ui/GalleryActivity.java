@@ -19,6 +19,7 @@ import com.example.smartalbum.data.ImageRepository;
 import com.example.smartalbum.domain.model.ImageMeta;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 public class GalleryActivity extends AppCompatActivity {
@@ -41,10 +42,14 @@ public class GalleryActivity extends AppCompatActivity {
         imageRepository = new ImageRepository(this);
 
         btnSelectImage.setOnClickListener(v -> openGallery());
+
+        imageRepository.printAllPhotos();
+        imageRepository.clearAllPhotos();
     }
 
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // ✅ 다중 선택
         startActivityForResult(intent, PICK_IMAGE);
     }
 
@@ -53,28 +58,51 @@ public class GalleryActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == PICK_IMAGE && resultCode == RESULT_OK && data != null) {
-            Uri imageUri = data.getData();
+            List<ImageMeta> metaList = new ArrayList<>();
             try {
-                InputStream inputStream = getContentResolver().openInputStream(imageUri);
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                imageView.setImageBitmap(bitmap);
-
-                ImageMeta imageMeta = imageRepository.classifyImage(imageUri, bitmap);
-
-                StringBuilder sb = new StringBuilder();
-                sb.append("📍지역: ").append(imageMeta.getRegion()).append("\n\n");
-                sb.append("Top 5 Predictions:\n\n");
-                List<Pair<String, Float>> predictions = imageMeta.getPredictions();
-                for (Pair<String, Float> prediction : predictions) {
-                    sb.append("- ").append(prediction.first).append(": ")
-                            .append(String.format("%.2f", prediction.second)).append("%\n");
+                if (data.getClipData() != null) { // 여러 장 선택
+                    int count = data.getClipData().getItemCount();
+                    for (int i = 0; i < count; i++) {
+                        Uri imageUri = data.getClipData().getItemAt(i).getUri();
+                        ImageMeta meta = processImage(imageUri);
+                        metaList.add(meta);
+                        imageRepository.savePhotoToDB(imageUri, meta);
+                    }
+                } else if (data.getData() != null) { // 한 장 선택
+                    Uri imageUri = data.getData();
+                    ImageMeta meta = processImage(imageUri);
+                    metaList.add(meta);
+                    imageRepository.savePhotoToDB(imageUri, meta);
                 }
 
-                resultText.setText(sb.toString());
+                // 화면에 가장 첫 번째 이미지 표시 (샘플)
+                if (!metaList.isEmpty()) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(
+                            getContentResolver().openInputStream(Uri.parse(metaList.get(0).getUri())));
+                    imageView.setImageBitmap(bitmap);
+
+                    StringBuilder sb = new StringBuilder();
+                    for (ImageMeta meta : metaList) {
+                        sb.append("📍지역: ").append(meta.getRegion()).append("\n");
+                        for (Pair<String, Float> pred : meta.getPredictions()) {
+                            sb.append("- ").append(pred.first).append(": ")
+                                    .append(String.format("%.2f", pred.second)).append("%\n");
+                        }
+                        sb.append("\n");
+                    }
+                    resultText.setText(sb.toString());
+                }
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private ImageMeta processImage(Uri imageUri) throws Exception {
+        InputStream inputStream = getContentResolver().openInputStream(imageUri);
+        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+        return imageRepository.classifyImage(imageUri, bitmap);
     }
 
     @Override

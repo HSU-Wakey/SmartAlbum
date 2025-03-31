@@ -24,4 +24,15 @@ public class ImageUtils {
         }
         return null;
     }
+    public static String getExifDateTaken(Context context, Uri uri) {
+        try {
+            InputStream stream = context.getContentResolver().openInputStream(uri);
+            ExifInterface exif = new ExifInterface(stream);
+            return exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 }
